@@ -15,7 +15,7 @@
     /// <remarks>
     /// Baseado no código disponível em: http://www.avantprime.com/blog/19/generating-unique-keys-based-on-a-method-or-class
     /// </remarks>
-    public static class CacheKey
+    public static class KeyGenerator
     {
         private static readonly Dictionary<Tuple<Type, MethodBase, String>, string> Keys =
             new Dictionary<Tuple<Type, MethodBase, String>, string>();
@@ -31,7 +31,7 @@
                 throw new ArgumentException("Not a method call");
             }
 
-            return string.Concat(GetMethodKey(call.Method.DeclaringType, call.Method, null), "_", MethodValue(call, expression.Parameters));
+            return string.Concat(GetMethodKey(call.Method.DeclaringType, call.Method), "_", MethodValue(call, expression.Parameters));
         }
 
         /// <summary>
@@ -60,7 +60,7 @@
         /// <param name="salt">
         /// The salt randomizer
         /// </param>
-        public static string GetMethodKey(object salt = null)
+        public static string GetMethodKey(string salt = null)
         {
             var stackTrace = new StackTrace();
             var callingMethod = stackTrace.GetFrame(1).GetMethod();
@@ -81,11 +81,11 @@
         /// <param name="salt">
         /// The salt.
         /// </param>
-        public static string GetMethodKey(Type @class, MethodBase method, object salt = null)
+        public static string GetMethodKey(Type @class, MethodBase method, string salt = null)
         {
             lock (SyncObject)
             {
-                var key = new Tuple<Type, MethodBase, string>(@class, method, salt != null ? salt.ToString() : string.Empty);
+                var key = new Tuple<Type, MethodBase, string>(@class, method, salt ?? "");
                 if (Keys.ContainsKey(key))
                 {
                     return Keys[key];

@@ -31,6 +31,7 @@
                 if (recorder != null)
                 {
                     recorder.Mode = value;
+                    recorder.IsRecording = recorder.Mode == FakerModeEnum.Save;
                 }
             }
         }

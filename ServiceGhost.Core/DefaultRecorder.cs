@@ -4,9 +4,7 @@
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Diagnostics.CodeAnalysis;
-    using System.Globalization;
     using System.Linq;
-    using System.Text;
 
     using FakeItEasy.Core;
     using FakeItEasy.SelfInitializedFakes;
@@ -18,8 +16,7 @@
     [SuppressMessage("Microsoft.Design", "CA1063:ImplementIDisposableCorrectly", Justification = "Implements the Disposable method to support the using statement only.")]
     public class DefaultRecorder : ISelfInitializingFakeRecorder, IInterceptionListener
     {
-        private readonly Queue<CallDataMetadata> callQueue;
-        private readonly List<CallDataMetadata> recordedCalls;
+        private readonly CallQueue recordedCalls;
         private readonly ICallStorage storage;
 
         /// <summary>
@@ -33,8 +30,7 @@
             var calls = storage.Load();
 
             this.IsRecording = calls == null;
-            this.callQueue = CreateCallsList(calls);
-            this.recordedCalls = new List<CallDataMetadata>(this.callQueue);
+            this.recordedCalls = CreateCallsList(calls);
         }
 
         /// <summary>
@@ -49,7 +45,7 @@
         /// Gets a value indicating whether the recorder is currently recording.
         /// </summary>
         /// <value></value>
-        public bool IsRecording { get; private set; }
+        public bool IsRecording { get; internal set; }
 
         /// <summary>
         /// Applies the call if the call has been recorded.
@@ -57,9 +53,12 @@
         /// <param name="fakeObjectCall">The call to apply to from recording.</param>
         public void ApplyNext(IInterceptedFakeObjectCall fakeObjectCall)
         {
-            this.AssertThatCallQueueIsNotEmpty();
+            var callToApply = this.recordedCalls.GetResponseForCall(fakeObjectCall);
 
-            var callToApply = this.callQueue.Dequeue();
+            if (callToApply == null)
+            {
+                throw new Exception("Nenhum item gravado disponível para a operação");
+            }
 
             // AssertThatMethodsMatches(fakeObjectCall, callToApply);
             ApplyOutputArguments(fakeObjectCall, callToApply);
@@ -74,25 +73,22 @@
         /// <param name="fakeObjectCall">The call to record.</param>
         public virtual void RecordCall(ICompletedFakeObjectCall fakeObjectCall)
         {
-            var stackTrace = new StackTrace();
-
-            // ReSharper disable once AssignNullToNotNullAttribute
-            var stack = stackTrace.GetFrames().Reverse().Select(x => x.GetMethod().ReflectedType + "." + x.GetMethod().Name).ToList();
-
             var hash = fakeObjectCall.GetHashCode();
             var watch = watches[hash];
             watches.Remove(hash);
             watch.Stop();
 
-            var callData = new CallData(fakeObjectCall.Method, GetOutputArgumentsForCall(fakeObjectCall), fakeObjectCall.ReturnValue);
+            var callData = new CallData(fakeObjectCall.Method, CommonExtensions.GetOutputArgumentsForCall(fakeObjectCall), fakeObjectCall.ReturnValue);
 
-            this.recordedCalls.Add(new CallDataMetadata
-            {
-                HasBeenApplied = true,
-                RecordedCall = callData,
-                ElapsedTime = watch.ElapsedMilliseconds,
-                Stack = stack
-            });
+            var item = new CallMetadata
+                       {
+                           HasBeenApplied = false,
+                           RecordedCall = callData,
+                           ElapsedTime = watch.ElapsedMilliseconds,
+                           UniqueId = KeyGenerator.GetMethodKey(fakeObjectCall.FakedObject.GetType(), fakeObjectCall.Method, CommonExtensions.GetCurrentStack())
+                       };
+
+            this.recordedCalls.AddItem(item);
         }
 
         /// <summary>
@@ -102,10 +98,10 @@
         [SuppressMessage("Microsoft.Design", "CA1063:ImplementIDisposableCorrectly", Justification = "The dispose method is provided for enabling using statement only, virtual for testability.")]
         public virtual void Dispose()
         {
-            this.storage.Save(this.recordedCalls.Select(x => x.RecordedCall));
+            this.storage.Save(this.recordedCalls.ToList().Select(x => x.RecordedCall));
         }
 
-        private static void ApplyOutputArguments(IInterceptedFakeObjectCall call, CallDataMetadata callToApply)
+        private static void ApplyOutputArguments(IInterceptedFakeObjectCall call, CallMetadata callToApply)
         {
             foreach (var outputArgument in GetIndicesAndValuesOfOutputParameters(call, callToApply.RecordedCall))
             {
@@ -113,25 +109,17 @@
             }
         }
 
-        private static IEnumerable<object> GetOutputArgumentsForCall(IFakeObjectCall call)
-        {
-            return
-                from valueAndParameterInfo in call.Method.GetParameters().Zip(call.Arguments.AsEnumerable())
-                where valueAndParameterInfo.Item1.ParameterType.IsByRef
-                select valueAndParameterInfo.Item2;
-        }
-
-        private static Queue<CallDataMetadata> CreateCallsList(IEnumerable<CallData> callsFromStorage)
+        private static CallQueue CreateCallsList(IEnumerable<CallData> callsFromStorage)
         {
             if (callsFromStorage == null)
             {
-                return new Queue<CallDataMetadata>();
+                return new CallQueue();
             }
 
-            var result = new Queue<CallDataMetadata>();
+            var result = new CallQueue();
             foreach (var call in callsFromStorage)
             {
-                result.Enqueue(new CallDataMetadata { RecordedCall = call });
+                result.AddItem(new CallMetadata { RecordedCall = call });
             }
 
             return result;
@@ -145,35 +133,6 @@
                  select argument.Item2).Zip(recordedCall.OutputArguments);
         }
 
-        private void AssertThatCallQueueIsNotEmpty()
-        {
-            if (this.callQueue.Count == 0)
-            {
-                throw new RecordingException();
-            }
-        }
-
-        private class CallDataMetadata
-        {
-            public CallData RecordedCall { get; set; }
-
-            public List<string> Stack { get; set; }
-
-            public long ElapsedTime { get; set; }
-
-            public bool HasBeenApplied { get; set; }
-
-            public override string ToString()
-            {
-                return new StringBuilder()
-                    .AppendFormat(CultureInfo.CurrentCulture, "Applied: {0}", this.HasBeenApplied)
-                    .AppendLine()
-                    .Append(this.RecordedCall.Method.Name)
-                    .Append(" ")
-                    .Append(this.RecordedCall.ReturnValue)
-                    .ToString();
-            }
-        }
 
         private Dictionary<int, Stopwatch> watches = new Dictionary<int, Stopwatch>();
 

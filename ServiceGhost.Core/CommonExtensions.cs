@@ -2,10 +2,13 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Globalization;
     using System.Linq;
     using System.Reflection;
     using System.Text;
+
+    using FakeItEasy.Core;
 
     /// <summary>
     /// Provides extension methods for the common uses.
@@ -39,6 +42,34 @@
         {
             return new ZipEnumerable<TFirst, TSecond>(firstCollection, secondCollection);
         }
+
+        internal static string GetCurrentStack()
+        {
+            var stackTrace = new StackTrace();
+
+            // ReSharper disable once AssignNullToNotNullAttribute
+            var stack = string.Join(
+                "\r\n",
+                stackTrace.GetFrames().Skip(1)
+                    .Reverse()
+                    .Select(x => x.GetMethod().ReflectedType + "." + x.GetMethod().Name)
+                    .SkipWhile(
+                        x =>
+                            x.StartsWith("Microsoft", StringComparison.Ordinal)
+                            || x.StartsWith("System", StringComparison.Ordinal))
+                            .TakeWhile(x => !x.StartsWith("ServiceGhost.Core", StringComparison.Ordinal)));
+
+            return stack;
+        }
+
+        internal static IEnumerable<object> GetOutputArgumentsForCall(IFakeObjectCall call)
+        {
+            return
+                from valueAndParameterInfo in call.Method.GetParameters().Zip(call.Arguments.AsEnumerable())
+                where valueAndParameterInfo.Item1.ParameterType.IsByRef
+                select valueAndParameterInfo.Item2;
+        }
+
 
         /// <summary>
         /// Joins the collection to a string.

@@ -19,7 +19,7 @@
 
             var watch = new Stopwatch();
             watch.Start();
-            for (int i = 0; i < 30; i++)
+            for (int i = 0; i < 1; i++)
             {
                 fake.GetTime();
             }
@@ -28,7 +28,8 @@
 
             watch.Restart();
             GhostHelper.Mode = FakerModeEnum.Load;
-            for (int i = 0; i < 30; i++)
+
+            for (int i = 0; i < 1; i++)
             {
                 fake.GetTime();
             }
@@ -40,9 +41,9 @@
 
         public class Clock
         {
-            public DateTime GetTime()
+            public virtual DateTime GetTime()
             {
-                Thread.Sleep(50);
+                Thread.Sleep(500);
                 return DateTime.Now;
             }
         }
