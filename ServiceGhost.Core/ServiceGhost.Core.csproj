@@ -49,6 +49,7 @@
     <Compile Include="DefaultStorage.cs" />
     <Compile Include="FakerModeEnum.cs" />
     <Compile Include="GhostHelper.cs" />
+    <Compile Include="IStorage.cs" />
     <Compile Include="KeyGenerator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

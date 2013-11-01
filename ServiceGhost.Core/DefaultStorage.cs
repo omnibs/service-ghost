@@ -3,18 +3,16 @@ using System.Linq;
 
 namespace ServiceGhost.Core
 {
-    using FakeItEasy.SelfInitializedFakes;
-
-    public class DefaultStorage : ICallStorage
+    public class DefaultStorage : IStorage
     {
-        public List<CallData> RecordedCalls { get; set; }
+        public List<CallMetadata> RecordedCalls { get; set; }
 
-        public IEnumerable<CallData> Load()
+        public IEnumerable<CallMetadata> Load()
         {
             return this.RecordedCalls;
         }
 
-        public void Save(IEnumerable<CallData> calls)
+        public void Save(IEnumerable<CallMetadata> calls)
         {
             this.RecordedCalls = calls.ToList();
         }

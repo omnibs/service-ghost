@@ -17,13 +17,13 @@
     public class DefaultRecorder : ISelfInitializingFakeRecorder, IInterceptionListener
     {
         private readonly CallQueue recordedCalls;
-        private readonly ICallStorage storage;
+        private readonly IStorage storage;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RecordingManager"/> class.
         /// </summary>
         /// <param name="storage">The storage.</param>
-        public DefaultRecorder(ICallStorage storage)
+        public DefaultRecorder(IStorage storage)
         {
             this.storage = storage;
 
@@ -98,7 +98,7 @@
         [SuppressMessage("Microsoft.Design", "CA1063:ImplementIDisposableCorrectly", Justification = "The dispose method is provided for enabling using statement only, virtual for testability.")]
         public virtual void Dispose()
         {
-            this.storage.Save(this.recordedCalls.ToList().Select(x => x.RecordedCall));
+            this.storage.Save(this.recordedCalls.ToList());
         }
 
         private static void ApplyOutputArguments(IInterceptedFakeObjectCall call, CallMetadata callToApply)
@@ -109,7 +109,7 @@
             }
         }
 
-        private static CallQueue CreateCallsList(IEnumerable<CallData> callsFromStorage)
+        private static CallQueue CreateCallsList(IEnumerable<CallMetadata> callsFromStorage)
         {
             if (callsFromStorage == null)
             {
@@ -119,7 +119,7 @@
             var result = new CallQueue();
             foreach (var call in callsFromStorage)
             {
-                result.AddItem(new CallMetadata { RecordedCall = call });
+                result.AddItem(call);
             }
 
             return result;

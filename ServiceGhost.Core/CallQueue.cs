@@ -9,15 +9,7 @@
     {
         private readonly Dictionary<string, List<CallMetadata>> calls = new Dictionary<string, List<CallMetadata>>();
 
-        public int Count
-        {
-            get
-            {
-                return count;
-            }
-        }
-
-        private int count = 0;
+        public int Count { get; private set; }
 
         public void LoadList(List<CallMetadata> data)
         {
@@ -35,7 +27,7 @@
             }
 
             calls[item.UniqueId].Add(item);
-            count++;
+            this.Count++;
         }
 
         public List<CallMetadata> ToList()
