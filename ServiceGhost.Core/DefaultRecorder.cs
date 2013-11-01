@@ -78,7 +78,7 @@
             watches.Remove(hash);
             watch.Stop();
 
-            var callData = new CallData(fakeObjectCall.Method, CommonExtensions.GetOutputArgumentsForCall(fakeObjectCall), fakeObjectCall.ReturnValue);
+            var callData = new CallData(fakeObjectCall.Method, CommonExtensions.GetOutputArgumentsForCall(fakeObjectCall), fakeObjectCall.ReturnValue.Copy());
 
             var item = new CallMetadata
                        {
