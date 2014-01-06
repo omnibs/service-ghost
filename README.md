@@ -1,4 +1,6 @@
 service-ghost
 =============
 
-Record all external calls to a C# assembly and record their values in order to fake it's behavior completely.
+It's Ruby's VCR but with all configuration done manually.
+
+Recorded method's classes must be mockable in order for service-ghost to work.
